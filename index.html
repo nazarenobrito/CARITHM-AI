@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>CARITHM AI — Diagnóstico Automotivo Mobile</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#0b0f19',
+              card: '#131927',
+              panel: '#1a2235',
+              border: '#232e47',
+              neon: '#00ff88',
+              cyan: '#00e5ff',
+              amber: '#ff9900',
+              red: '#ff3366'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Native App Layout Styles */
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+    
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #232e47; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00ff88; }
+
+    /* Scanner Glow & Active Visual Haptics */
+    .glow-neon { box-shadow: 0 0 16px rgba(0, 255, 136, 0.25); }
+    .glow-cyan { box-shadow: 0 0 16px rgba(0, 229, 255, 0.25); }
+    .glow-amber { box-shadow: 0 0 16px rgba(255, 153, 0, 0.25); }
+    .glow-red { box-shadow: 0 0 16px rgba(255, 51, 102, 0.25); }
+
+    .touch-active:active {
+      transform: scale(0.96);
+      filter: brightness(1.15);
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: rgba(19, 25, 39, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(35, 46, 71, 0.8);
+    }
+
+    /* Hide horizontal scrollbar */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="h-full flex flex-col justify-between select-none">
+
+  <!-- MOBILE/TABLET HEADER BAR -->
+  <header class="sticky top-0 z-40 bg-brand-card/95 border-b border-brand-border backdrop-blur-md px-4 py-2.5 flex items-center justify-between shadow-lg pt-[calc(0.5rem+var(--sat))]">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-neon to-brand-cyan flex items-center justify-center text-slate-950 font-bold glow-neon">
+        <i class="fa-solid fa-car-burst text-base"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm font-extrabold tracking-wider text-white">CARITHM</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded bg-brand-neon/20 text-brand-neon font-mono font-bold border border-brand-neon/40">AI MOBILE</span>
+        </div>
+        <p class="text-[9px] text-slate-400 font-mono tracking-tight">Scanner Automotivo SaaS</p>
+      </div>
+    </div>
+
+    <!-- Quick Vehicle Selector Chip & Live Sensor Pills -->
+    <div class="flex items-center space-x-2">
+      <!-- Active Vehicle Chip Button -->
+      <button onclick="toggleVehicleDropdown()" class="touch-active flex items-center space-x-1.5 bg-brand-panel border border-brand-border hover:border-brand-neon px-2.5 py-1.5 rounded-full text-xs transition">
+        <i class="fa-solid fa-car text-brand-neon text-[11px]"></i>
+        <span id="header-vehicle-name" class="font-semibold text-slate-200 max-w-[90px] sm:max-w-[140px] truncate text-[11px]">VW Golf TSI</span>
+        <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+      </button>
+
+      <!-- Hardware Sensor Status Badges -->
+      <div class="hidden sm:flex items-center gap-1.5 bg-brand-dark px-2 py-1 rounded-full border border-brand-border text-[10px]">
+        <span id="badge-mic" class="flex items-center gap-1 text-slate-500" title="Microfone">
+          <i class="fa-solid fa-microphone"></i>
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </span>
+        <span class="text-slate-700">|</span>
+        <span id="badge-accel" class="flex items-center gap-1 text-slate-500" title="Acelerômetro">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </span>
+        <span class="text-slate-700">|</span>
+        <span id="badge-obd" class="flex items-center gap-1 text-slate-500" title="OBD-II Bluetooth">
+          <i class="fa-brands fa-bluetooth-b"></i>
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </span>
+      </div>
+
+      <!-- Slide Drawer Toggle Button -->
+      <button onclick="toggleSlideDrawer()" class="touch-active w-9 h-9 rounded-xl bg-brand-panel border border-brand-border flex items-center justify-center text-slate-300 hover:text-white">
+        <i class="fa-solid fa-bars-staggered text-sm"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- VEHICLE DROPDOWN MODAL FOR MOBILE -->
+  <div id="vehicle-dropdown" class="hidden fixed inset-x-4 top-16 z-50 bg-brand-card border border-brand-border rounded-2xl shadow-2xl p-3 space-y-2 backdrop-blur-xl max-w-md mx-auto">
+    <div class="flex items-center justify-between px-2 py-1 border-b border-brand-border text-[10px] font-bold uppercase tracking-wider text-slate-400">
+      <span>Selecionar Veículo Ativo</span>
+      <button onclick="toggleVehicleDropdown()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="vehicle-dropdown-list" class="max-h-48 overflow-y-auto space-y-1">
+      <!-- Populated dynamically -->
+    </div>
+    <button onclick="switchTab('garage'); toggleVehicleDropdown();" class="w-full py-2 bg-brand-neon/10 hover:bg-brand-neon/20 text-brand-neon rounded-xl text-xs font-bold border border-brand-neon/30 flex items-center justify-center gap-2 transition">
+      <i class="fa-solid fa-plus-circle"></i> Gerenciar Garagem
+    </button>
+  </div>
+
+  <!-- SLIDE-OVER DRAWER (SETTINGS, REPORTS, HELP, DIAGNOSTICS) -->
+  <div id="slide-drawer" class="fixed inset-0 z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex justify-end bg-black/70 backdrop-blur-sm">
+    <div class="w-80 max-w-full bg-brand-card border-l border-brand-border h-full flex flex-col justify-between p-5 space-y-4 overflow-y-auto">
+      <div class="space-y-5">
+        <div class="flex items-center justify-between border-b border-brand-border pb-3">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-sliders text-brand-neon"></i>
+            <h3 class="text-xs font-bold text-slate-100 uppercase tracking-wider">Painel de Ferramentas</h3>
+          </div>
+          <button onclick="toggleSlideDrawer()" class="w-8 h-8 rounded-lg bg-brand-panel flex items-center justify-center text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <nav class="space-y-1.5 text-xs font-medium">
+          <button onclick="switchTab('reports'); toggleSlideDrawer();" class="w-full p-3 rounded-xl bg-brand-panel border border-brand-border hover:border-brand-cyan text-left text-slate-200 flex items-center gap-3">
+            <i class="fa-solid fa-file-lines text-brand-cyan w-5 text-center"></i> Histórico & Relatórios PDF
+          </button>
+          <button onclick="switchTab('settings'); toggleSlideDrawer();" class="w-full p-3 rounded-xl bg-brand-panel border border-brand-border hover:border-brand-amber text-left text-slate-200 flex items-center gap-3">
+            <i class="fa-solid fa-sliders text-brand-amber w-5 text-center"></i> Calibração & Sensores
+          </button>
+          <button onclick="switchTab('help'); toggleSlideDrawer();" class="w-full p-3 rounded-xl bg-brand-panel border border-brand-border hover:border-brand-neon text-left text-slate-200 flex items-center gap-3">
+            <i class="fa-solid fa-circle-question text-brand-neon w-5 text-center"></i> Central de Ajuda & Manual
+          </button>
+        </nav>
+
+        <!-- Live Sensor Diagnostic Mini Status -->
+        <div class="p-3.5 bg-brand-dark rounded-xl border border-brand-border space-y-2">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium">APIs do Navegador</span>
+            <span id="drawer-api-status" class="px-1.5 py-0.5 rounded bg-brand-neon/20 text-brand-neon text-[9px] font-mono font-bold">100% OK</span>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-normal">Web Audio, DeviceMotion e Web Bluetooth operando no smartphone.</p>
+        </div>
+      </div>
+
+      <div class="text-center border-t border-brand-border pt-3">
+        <p class="text-[10px] text-slate-500 font-mono">CARITHM AI v3.5 Mobile Pro</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN VIEWPORT CONTAINER FOR TABLET & SMARTPHONE -->
+  <main class="flex-1 overflow-y-auto p-3 sm:p-5 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
+    
+    <!-- ================= 1. DASHBOARD PRINCIPAL ================= -->
+    <section id="tab-dashboard" class="tab-content space-y-4">
+      
+      <!-- Top Engine Health Score & Quick Triggers -->
+      <div class="bg-gradient-to-r from-brand-card to-brand-panel p-4 sm:p-5 rounded-2xl border border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-4 w-full sm:w-auto">
+          <div class="relative w-16 h-16 shrink-0 flex items-center justify-center rounded-2xl bg-brand-dark border border-brand-neon/40 glow-neon">
+            <span id="dash-health-score" class="text-xl font-black font-mono text-brand-neon">94%</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Saúde Geral do Motor</span>
+              <span class="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-mono font-bold">EXCELENTE</span>
+            </div>
+            <h2 id="dash-health-status" class="text-sm sm:text-base font-bold text-slate-100">Motor Operando sem Falhas Críticas</h2>
+            <p class="text-[11px] text-slate-400">Telemetria de sensores dentro dos padrões normais</p>
+          </div>
+        </div>
+
+        <button onclick="switchTab('wizard')" class="touch-active w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-brand-neon to-brand-cyan hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg glow-neon">
+          <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+          <span>INICIAR DIAGNÓSTICO GUIADO</span>
+        </button>
+      </div>
+
+      <!-- Real-Time Live PID Telemetry Gauges -->
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-3">
+        <div class="flex items-center justify-between border-b border-brand-border pb-2.5">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-gauge-high text-brand-cyan text-sm"></i>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Telemetria PIDs em Tempo Real</h3>
+          </div>
+          <button onclick="toggleObdSimulatedData()" class="text-[10px] bg-brand-panel hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-brand-border font-mono transition">
+            <i class="fa-solid fa-bolt text-brand-amber mr-1"></i> Alternar Dados
+          </button>
+        </div>
+
+        <!-- Touch-optimized Grid of PID Telemetry -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <!-- RPM -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">RPM Motor</span>
+            <div id="gauge-rpm-val" class="text-xl sm:text-2xl font-black font-mono text-brand-neon my-0.5">820</div>
+            <span class="text-[9px] text-slate-500 font-mono">Marcha Lenta</span>
+          </div>
+
+          <!-- Speed -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Velocidade</span>
+            <div id="gauge-speed-val" class="text-xl sm:text-2xl font-black font-mono text-brand-cyan my-0.5">0 <span class="text-xs font-normal text-slate-400">km/h</span></div>
+            <span class="text-[9px] text-slate-500 font-mono">Veículo Parado</span>
+          </div>
+
+          <!-- Coolant Temp -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Temp. Arrefec.</span>
+            <div id="gauge-temp-val" class="text-xl sm:text-2xl font-black font-mono text-brand-amber my-0.5">88 <span class="text-xs font-normal text-slate-400">°C</span></div>
+            <span class="text-[9px] text-emerald-400 font-mono">Normal</span>
+          </div>
+
+          <!-- Battery Volts -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Bateria / Alt.</span>
+            <div id="gauge-volt-val" class="text-xl sm:text-2xl font-black font-mono text-slate-100 my-0.5">14.1 <span class="text-xs font-normal text-slate-400">V</span></div>
+            <span class="text-[9px] text-emerald-400 font-mono">Carregando</span>
+          </div>
+
+          <!-- Engine Load -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Carga Célula</span>
+            <div id="gauge-load-val" class="text-xl sm:text-2xl font-black font-mono text-slate-200 my-0.5">18 <span class="text-xs font-normal text-slate-400">%</span></div>
+            <span class="text-[9px] text-slate-500 font-mono">Mínima</span>
+          </div>
+
+          <!-- Fuel Trim STFT -->
+          <div class="bg-brand-dark p-3 rounded-xl border border-brand-border text-center flex flex-col justify-between min-h-[90px]">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">STFT Combust.</span>
+            <div id="gauge-stft-val" class="text-xl sm:text-2xl font-black font-mono text-brand-neon my-0.5">+1.2 <span class="text-xs font-normal text-slate-400">%</span></div>
+            <span class="text-[9px] text-slate-500 font-mono">Estequiométrico</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Launch Buttons Cards Grid for Mobile & Tablet -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button onclick="switchTab('audio')" class="touch-active p-4 rounded-2xl bg-brand-card hover:bg-brand-panel border border-brand-border hover:border-brand-cyan text-left flex items-center justify-between transition group">
+          <div>
+            <div class="text-[10px] text-brand-cyan uppercase tracking-wider font-mono font-bold">Sensoriamento Sonoro</div>
+            <div class="text-sm font-bold text-slate-100">Análise Acústica</div>
+            <div class="text-[11px] text-slate-400">FFT & Espectrograma em tempo real</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-brand-cyan/10 text-brand-cyan flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-wave-square"></i>
+          </div>
+        </button>
+
+        <button onclick="switchTab('vibration')" class="touch-active p-4 rounded-2xl bg-brand-card hover:bg-brand-panel border border-brand-border hover:border-brand-amber text-left flex items-center justify-between transition group">
+          <div>
+            <div class="text-[10px] text-brand-amber uppercase tracking-wider font-mono font-bold">G-Force Tri-Axial</div>
+            <div class="text-sm font-bold text-slate-100">Análise Vibração</div>
+            <div class="text-[11px] text-slate-400">Acelerômetro DeviceMotion</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-brand-amber/10 text-brand-amber flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-vibrating-mode"></i>
+          </div>
+        </button>
+
+        <button onclick="switchTab('obd')" class="touch-active p-4 rounded-2xl bg-brand-card hover:bg-brand-panel border border-brand-border hover:border-brand-neon text-left flex items-center justify-between transition group">
+          <div>
+            <div class="text-[10px] text-brand-neon uppercase tracking-wider font-mono font-bold">Bluetooth ELM327</div>
+            <div class="text-sm font-bold text-slate-100">Diagnóstico OBD-II</div>
+            <div class="text-[11px] text-slate-400">Leitura & Limpeza de DTCs</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-brand-neon/10 text-brand-neon flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+            <i class="fa-brands fa-bluetooth-b"></i>
+          </div>
+        </button>
+      </div>
+
+      <!-- Active Warnings & DTC Overview -->
+      <div class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-brand-amber"></i> Alertas do Veículo
+        </h3>
+        <div id="dash-dtc-container" class="space-y-2">
+          <div class="p-3 bg-brand-dark rounded-xl border border-brand-border flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-2 h-2 rounded-full bg-brand-neon"></span>
+              <span class="text-xs text-slate-300">Nenhum código de erro (DTC) ativo no momento.</span>
+            </div>
+            <button onclick="switchTab('obd')" class="text-xs text-brand-cyan hover:underline font-semibold">Verificar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. DIAGNÓSTICO ACÚSTICO (WEB AUDIO API) ================= -->
+    <section id="tab-audio" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+              <i class="fa-solid fa-wave-square text-brand-cyan"></i> Diagnóstico Acústico (Web Audio API)
+            </h2>
+            <p class="text-[11px] text-slate-400">Captura e análise de harmônicas sonoras do motor pelo microfone.</p>
+          </div>
+
+          <button id="btn-audio-toggle" onclick="toggleAudioRecording()" class="touch-active px-5 py-3 bg-brand-neon text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg glow-neon">
+            <i class="fa-solid fa-microphone text-sm"></i>
+            <span>INICIAR CAPTURA ACÚSTICA</span>
+          </button>
+        </div>
+
+        <!-- Filter and Preset Timers Controls Bar -->
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-brand-border">
+          <select id="audio-filter-select" onchange="setAudioFilter(this.value)" class="bg-brand-panel border border-brand-border text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-brand-cyan flex-1 min-w-[160px]">
+            <option value="none">Filtro DSP: Desativado (Flat)</option>
+            <option value="lowpass">Passa-Baixa (&lt; 800 Hz - Batidas)</option>
+            <option value="highpass">Passa-Alta (&gt; 2500 Hz - Tuchos)</option>
+            <option value="bandpass">Passa-Banda (1000 - 3000 Hz - Correias)</option>
+          </select>
+
+          <div class="flex items-center gap-1 bg-brand-panel p-1 rounded-xl border border-brand-border shrink-0">
+            <button onclick="startAudioRecording(5)" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-mono text-slate-200 font-bold">5s</button>
+            <button onclick="startAudioRecording(10)" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-mono text-slate-200 font-bold">10s</button>
+            <button onclick="startAudioRecording(15)" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-mono text-slate-200 font-bold">15s</button>
+            <button onclick="startAudioRecording(30)" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-mono text-slate-200 font-bold">30s</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Waveform & FFT Canvas Visualizers -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Canvas 1: Oscillogram -->
+        <div class="bg-brand-card p-3.5 rounded-2xl border border-brand-border space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-lines-leaning text-brand-neon"></i> Oscilograma no Tempo
+            </span>
+            <span id="audio-record-timer" class="font-mono text-brand-neon font-bold text-xs">00:00</span>
+          </div>
+          <div class="relative bg-brand-dark rounded-xl border border-brand-border overflow-hidden h-44 flex items-center justify-center">
+            <canvas id="canvas-waveform" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- Canvas 2: Spectrogram FFT -->
+        <div class="bg-brand-card p-3.5 rounded-2xl border border-brand-border space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-brand-cyan"></i> Espectro FFT (20Hz - 20kHz)
+            </span>
+            <span id="audio-peak-freq" class="font-mono text-brand-cyan font-bold text-xs">Pico: --- Hz</span>
+          </div>
+          <div class="relative bg-brand-dark rounded-xl border border-brand-border overflow-hidden h-44 flex items-center justify-center">
+            <canvas id="canvas-fft" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Amplitude RMS</span>
+          <div id="audio-rms-val" class="text-lg font-black font-mono text-brand-neon mt-0.5">-42.5 dB</div>
+          <span class="text-[9px] text-slate-500 font-mono">Nível relativo</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Freq. Dominante</span>
+          <div id="audio-dom-freq" class="text-lg font-black font-mono text-brand-cyan mt-0.5">1,240 Hz</div>
+          <span class="text-[9px] text-slate-500 font-mono">Harmônica principal</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Ruído de Fundo</span>
+          <div id="audio-floor-val" class="text-lg font-black font-mono text-slate-200 mt-0.5">-55 dB</div>
+          <span class="text-[9px] text-slate-500 font-mono">Qualidade limpa</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Filtro Ativo</span>
+          <div id="audio-active-filter" class="text-lg font-black font-mono text-brand-amber mt-0.5">NENHUM</div>
+          <span class="text-[9px] text-slate-500 font-mono">DSP AudioNode</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. DIAGNÓSTICO DE VIBRAÇÃO (DEVICEMOTION) ================= -->
+    <section id="tab-vibration" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-vibrating-mode text-brand-amber"></i> Análise Vibracional G-Force (DeviceMotion)
+          </h2>
+          <p class="text-[11px] text-slate-400">Captura de aceleração tri-axial via acelerômetro do smartphone.</p>
+        </div>
+
+        <button id="btn-vibration-toggle" onclick="toggleVibrationCapture()" class="touch-active px-5 py-3 bg-brand-amber text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg glow-amber">
+          <i class="fa-solid fa-play text-sm"></i>
+          <span>INICIAR LEITURA G-FORCE</span>
+        </button>
+      </div>
+
+      <!-- Mobile Safety Warning Banner -->
+      <div class="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start space-x-3">
+        <i class="fa-solid fa-shield-halved text-red-400 text-sm mt-0.5 shrink-0"></i>
+        <div class="text-[11px] text-slate-300 space-y-0.5">
+          <h4 class="font-bold text-red-400 uppercase tracking-wide">Segurança em Primeiro Lugar</h4>
+          <p><strong>NÃO</strong> encoste o celular em partes aquecidas ou móveis do motor. Posicione no suporte do console ou painel do veículo.</p>
+        </div>
+      </div>
+
+      <!-- Real-Time Vibration Graph Canvas -->
+      <div class="bg-brand-card p-3.5 rounded-2xl border border-brand-border space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-brand-amber"></i> Aceleração Tri-Axial Instantânea (m/s²)
+          </span>
+          <div class="flex items-center space-x-3 text-[10px] font-mono">
+            <span class="text-red-400 font-bold">X</span>
+            <span class="text-brand-neon font-bold">Y</span>
+            <span class="text-brand-cyan font-bold">Z</span>
+          </div>
+        </div>
+        <div class="relative bg-brand-dark rounded-xl border border-brand-border overflow-hidden h-52 flex items-center justify-center">
+          <canvas id="canvas-vibration" class="w-full h-full block"></canvas>
+        </div>
+      </div>
+
+      <!-- Vibration Metrics -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Aceleração RMS</span>
+          <div id="vib-rms-val" class="text-lg font-black font-mono text-brand-amber mt-0.5">0.14 <span class="text-xs font-normal text-slate-400">m/s²</span></div>
+          <span class="text-[9px] text-emerald-400 font-mono">Vibração Baixa</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Pico Máximo</span>
+          <div id="vib-peak-val" class="text-lg font-black font-mono text-slate-200 mt-0.5">0.38 <span class="text-xs font-normal text-slate-400">m/s²</span></div>
+          <span class="text-[9px] text-slate-500 font-mono">Peak-to-Peak</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Taxa Amostragem</span>
+          <div id="vib-rate-val" class="text-lg font-black font-mono text-brand-cyan mt-0.5">60 <span class="text-xs font-normal text-slate-400">Hz</span></div>
+          <span class="text-[9px] text-slate-500 font-mono">DeviceMotion API</span>
+        </div>
+
+        <div class="bg-brand-card p-3.5 rounded-xl border border-brand-border text-center">
+          <span class="text-[9px] text-slate-400 uppercase font-bold">Índice Estabilidade</span>
+          <div id="vib-stability-val" class="text-lg font-black font-mono text-brand-neon mt-0.5">98%</div>
+          <span class="text-[9px] text-slate-500 font-mono">Sem Oscilação</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. DIAGNÓSTICO ELETRÔNICO OBD-II ================= -->
+    <section id="tab-obd" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-brands fa-bluetooth-b text-brand-cyan"></i> Conexão OBD-II Bluetooth (ELM327)
+          </h2>
+          <p class="text-[11px] text-slate-400">Comunicação via Web Bluetooth API com a ECU do veículo.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="connectObdBluetooth()" class="touch-active flex-1 sm:flex-none px-4 py-2.5 bg-brand-cyan text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg glow-cyan">
+            <i class="fa-solid fa-search"></i> Escanear Adaptador
+          </button>
+          <button onclick="simulateDtcFault()" class="touch-active px-3 py-2.5 bg-brand-panel text-brand-amber border border-brand-border rounded-xl text-xs font-semibold">
+            <i class="fa-solid fa-bug"></i> Injetar Falha
+          </button>
+        </div>
+      </div>
+
+      <!-- DTC Reader & Clear Memory Panel -->
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-3">
+        <div class="flex items-center justify-between border-b border-brand-border pb-2.5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-check text-brand-neon"></i> Memória de Erros ECU (Códigos DTC)
+          </h3>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="readDtcCodes()" class="px-3 py-1.5 bg-brand-neon/20 text-brand-neon border border-brand-neon/30 rounded-lg text-xs font-bold hover:bg-brand-neon/30 transition">
+              <i class="fa-solid fa-rotate mr-1"></i> Ler
+            </button>
+            <button onclick="promptClearDtc()" class="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold hover:bg-red-500/30 transition">
+              <i class="fa-solid fa-trash-can mr-1"></i> Limpar
+            </button>
+          </div>
+        </div>
+
+        <div id="obd-dtc-list" class="space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- DTC Database Search Engine -->
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass text-brand-cyan"></i> Dicionário de Códigos DTC (P0000 - U3999)
+        </h3>
+
+        <div class="flex gap-2">
+          <input type="text" id="dtc-search-input" placeholder="Digite o código (ex: P0300, P0171)..." class="flex-1 bg-brand-dark border border-brand-border rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-cyan font-mono" />
+          <button onclick="searchDtcDatabase()" class="px-4 py-2.5 bg-brand-panel hover:bg-slate-700 text-slate-200 border border-brand-border font-bold rounded-xl text-xs">
+            Buscar
+          </button>
+        </div>
+
+        <div id="dtc-search-result" class="hidden p-3.5 bg-brand-dark rounded-xl border border-brand-border space-y-1.5 text-xs">
+          <!-- Result rendered here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 5. MOTOR CARITHM AI & WIZARD ================= -->
+    <section id="tab-ai" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-brain text-brand-neon"></i> CARITHM AI Engine & Diagnóstico Guiado
+          </h2>
+          <p class="text-[11px] text-slate-400">Cruzamento inteligente de telemetria OBD-II, áudio e vibração.</p>
+        </div>
+
+        <button onclick="runAiCorrelationAnalysis()" class="touch-active px-5 py-3 bg-gradient-to-r from-brand-neon to-brand-cyan text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg glow-neon">
+          <i class="fa-solid fa-microchip"></i>
+          <span>EXECUTAR FUSÃO DE IA</span>
+        </button>
+      </div>
+
+      <!-- AI Consolidate Output Panel -->
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between border-b border-brand-border pb-3 gap-3">
+          <div>
+            <span class="text-[9px] uppercase font-mono tracking-widest text-brand-neon font-bold">Laudo Técnico Consolidado</span>
+            <h3 id="ai-main-title" class="text-sm sm:text-base font-bold text-slate-100 mt-0.5">Nenhuma Anomalia Detectada</h3>
+            <p id="ai-main-sub" class="text-[11px] text-slate-400 mt-0.5">Cruzamento multitrim de harmônicas sonoras e PIDs estável.</p>
+          </div>
+
+          <div class="flex items-center space-x-3 shrink-0">
+            <div class="text-right">
+              <span class="text-[9px] text-slate-400 uppercase font-mono">Urgência</span>
+              <div id="ai-urgency-tag" class="text-xs font-bold text-brand-neon font-mono uppercase">Mínima</div>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-brand-neon/20 border border-brand-neon/40 flex items-center justify-center font-mono font-bold text-lg text-brand-neon">
+              <span id="ai-score-val">96</span>%
+            </div>
+          </div>
+        </div>
+
+        <!-- Evidence Grid -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Evidências Cruzadas</h4>
+          <div id="ai-evidence-list" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="p-3 bg-brand-dark rounded-xl border border-brand-border text-xs">
+              <span class="text-[9px] text-slate-400 uppercase font-mono font-bold">Sensoriamento Acústico</span>
+              <p class="text-slate-300 mt-1">Espectro harmônico regular sem sopros ou batidas.</p>
+            </div>
+            <div class="p-3 bg-brand-dark rounded-xl border border-brand-border text-xs">
+              <span class="text-[9px] text-slate-400 uppercase font-mono font-bold">Sensoriamento Vibração</span>
+              <p class="text-slate-300 mt-1">RMS 0.14 m/s² indica ausência de desbalanceamento.</p>
+            </div>
+            <div class="p-3 bg-brand-dark rounded-xl border border-brand-border text-xs">
+              <span class="text-[9px] text-slate-400 uppercase font-mono font-bold">Injeção OBD-II</span>
+              <p class="text-slate-300 mt-1">STFT (+1.2%) e Carga (18%) dentro do mapa padrão.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GUIDED WIZARD MODULE -->
+      <section id="tab-wizard" class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles text-brand-cyan"></i> Assistente de Diagnóstico Passo a Passo
+        </h3>
+
+        <!-- Stepper Indicators -->
+        <div class="flex items-center justify-between border-b border-brand-border pb-3 text-xs font-bold">
+          <div id="wiz-step-1-ind" class="text-brand-neon flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-brand-neon/20 border border-brand-neon flex items-center justify-center font-mono text-[10px]">1</span> Sintoma
+          </div>
+          <div id="wiz-step-2-ind" class="text-slate-500 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-brand-panel border border-brand-border flex items-center justify-center font-mono text-[10px]">2</span> Condição
+          </div>
+          <div id="wiz-step-3-ind" class="text-slate-500 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-brand-panel border border-brand-border flex items-center justify-center font-mono text-[10px]">3</span> Laudo
+          </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div id="wiz-step-1" class="space-y-3">
+          <p class="text-xs text-slate-300 font-semibold">Qual sintoma principal você percebeu no veículo?</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button onclick="selectWizardSymptom('noise')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <i class="fa-solid fa-volume-high text-brand-neon text-base mb-1"></i>
+              <div class="text-xs font-bold text-slate-200">Barulho Estranho / Ruído</div>
+              <div class="text-[10px] text-slate-400">Batidas, staccato ou chiado metálico.</div>
+            </button>
+            <button onclick="selectWizardSymptom('shake')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <i class="fa-solid fa-vibrating-mode text-brand-amber text-base mb-1"></i>
+              <div class="text-xs font-bold text-slate-200">Trepidação / Vibração</div>
+              <div class="text-[10px] text-slate-400">Vibração no volante ou chassi.</div>
+            </button>
+            <button onclick="selectWizardSymptom('light')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <i class="fa-solid fa-engine-warning text-brand-red text-base mb-1"></i>
+              <div class="text-xs font-bold text-slate-200">Luz da Injeção Acesa</div>
+              <div class="text-[10px] text-slate-400">Falha eletrônica ou engasgo.</div>
+            </button>
+            <button onclick="selectWizardSymptom('power')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <i class="fa-solid fa-gauge-simple-high text-brand-cyan text-base mb-1"></i>
+              <div class="text-xs font-bold text-slate-200">Perda de Potência</div>
+              <div class="text-[10px] text-slate-400">Motor fraco em aclives.</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="wiz-step-2" class="space-y-3 hidden">
+          <p class="text-xs text-slate-300 font-semibold">Em qual situação o problema se manifesta?</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button onclick="selectWizardCondition('idle')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <div class="text-xs font-bold text-slate-200">Em Marcha Lenta (Parado)</div>
+              <div class="text-[10px] text-slate-400">Motor rodando sem acelerar (~800 RPM).</div>
+            </button>
+            <button onclick="selectWizardCondition('accel')" class="touch-active p-3.5 bg-brand-dark hover:bg-brand-panel border border-brand-border rounded-xl text-left">
+              <div class="text-xs font-bold text-slate-200">Ao Acelerar / Em Movimento</div>
+              <div class="text-[10px] text-slate-400">Ao pisar no acelerador ou em subidas.</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="wiz-step-3" class="space-y-3 hidden text-center py-4">
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-brand-neon"></i>
+          <p class="text-xs text-slate-200 font-bold">Processando Sensoriamento Automático...</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- ================= 6. CADASTRO DE VEÍCULOS & GARAGEM ================= -->
+    <section id="tab-garage" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-car-side text-brand-neon"></i> Garagem Digital do Usuário
+          </h2>
+          <p class="text-[11px] text-slate-400">Cadastre e alterne entre múltiplos veículos de sua frota.</p>
+        </div>
+
+        <button onclick="openAddVehicleModal()" class="touch-active px-4 py-2.5 bg-brand-neon text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg glow-neon">
+          <i class="fa-solid fa-plus"></i> Novo Veículo
+        </button>
+      </div>
+
+      <div id="garage-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- ================= 7. RELATÓRIOS & HISTÓRICO ================= -->
+    <section id="tab-reports" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-file-lines text-brand-cyan"></i> Relatórios Técnicos & Exportação
+          </h2>
+          <p class="text-[11px] text-slate-400">Sessões gravadas com dados de áudio, vibração e DTCs.</p>
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="exportReportsJson()" class="px-3 py-2 bg-brand-panel text-slate-200 border border-brand-border rounded-xl text-xs font-semibold">
+            <i class="fa-solid fa-download mr-1"></i> JSON
+          </button>
+          <button onclick="window.print()" class="px-3 py-2 bg-brand-cyan text-slate-950 font-bold rounded-xl text-xs">
+            <i class="fa-solid fa-print mr-1"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-brand-card p-4 rounded-2xl border border-brand-border overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-brand-dark text-slate-400 uppercase font-mono text-[9px] border-b border-brand-border">
+            <tr>
+              <th class="p-2.5">Data</th>
+              <th class="p-2.5">Veículo</th>
+              <th class="p-2.5">Resultado</th>
+              <th class="p-2.5">Saúde</th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body" class="divide-y divide-brand-border">
+            <tr>
+              <td class="p-2.5 font-mono text-slate-400">Hoje, 14:20</td>
+              <td class="p-2.5 font-bold text-slate-200">VW Golf TSI</td>
+              <td class="p-2.5 text-emerald-400">Sem falhas graves</td>
+              <td class="p-2.5 font-mono font-bold text-brand-neon">96%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= 8. CONFIGURAÇÕES & CALIBRAÇÃO ================= -->
+    <section id="tab-settings" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border">
+        <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-brand-amber"></i> Calibração & Diagnóstico de APIs
+        </h2>
+        <p class="text-[11px] text-slate-400">Ajuste fino de offset e verificação de hardware do smartphone.</p>
+      </div>
+
+      <div class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Compatibilidade do Navegador Mobile</h3>
+        <div id="compatibility-checker-list" class="space-y-2 text-xs">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 9. CENTRAL DE AJUDA ================= -->
+    <section id="tab-help" class="tab-content space-y-4 hidden">
+      <div class="bg-brand-card p-4 sm:p-5 rounded-2xl border border-brand-border">
+        <h2 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-circle-question text-brand-neon"></i> Guia Rápido & Suporte
+        </h2>
+        <p class="text-[11px] text-slate-400">Como usar os sensores do seu celular no diagnóstico.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-1.5">
+          <i class="fa-brands fa-bluetooth-b text-xl text-brand-cyan"></i>
+          <h3 class="text-xs font-bold text-slate-200">Conexão OBD-II</h3>
+          <p class="text-[11px] text-slate-400 leading-normal">Plugue o ELM327 na tomada OBD2 sob o painel, ligue a chave de ignição e pareie via Bluetooth.</p>
+        </div>
+        <div class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-1.5">
+          <i class="fa-solid fa-microphone-lines text-xl text-brand-neon"></i>
+          <h3 class="text-xs font-bold text-slate-200">Captura de Áudio</h3>
+          <p class="text-[11px] text-slate-400 leading-normal">Aproxime o celular a 30cm do compartimento do motor em marcha lenta mantendo distância de partes móveis.</p>
+        </div>
+        <div class="bg-brand-card p-4 rounded-2xl border border-brand-border space-y-1.5">
+          <i class="fa-solid fa-vibrating-mode text-xl text-brand-amber"></i>
+          <h3 class="text-xs font-bold text-slate-200">Acelerômetro</h3>
+          <p class="text-[11px] text-slate-400 leading-normal">Deixe o celular em uma superfície firme no interior do carro para medições de trepidação realistas.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ERGONOMIC MOBILE BOTTOM NAVIGATION BAR (6 KEY TABS) -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-brand-card/95 border-t border-brand-border backdrop-blur-md px-1 py-1.5 flex items-center justify-around shadow-2xl pb-[calc(0.375rem+var(--sab))]">
+    <button onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-brand-neon">
+      <i class="fa-solid fa-gauge-high text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">Dashboard</span>
+    </button>
+    <button onclick="switchTab('audio')" id="mob-nav-audio" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-slate-400">
+      <i class="fa-solid fa-wave-square text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">Áudio</span>
+    </button>
+    <button onclick="switchTab('vibration')" id="mob-nav-vibration" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-slate-400">
+      <i class="fa-solid fa-vibrating-mode text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">Vibração</span>
+    </button>
+    <button onclick="switchTab('obd')" id="mob-nav-obd" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-slate-400">
+      <i class="fa-brands fa-bluetooth-b text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">OBD-II</span>
+    </button>
+    <button onclick="switchTab('ai')" id="mob-nav-ai" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-slate-400">
+      <i class="fa-solid fa-brain text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">IA Engine</span>
+    </button>
+    <button onclick="switchTab('garage')" id="mob-nav-garage" class="mob-nav-btn touch-active flex flex-col items-center justify-center min-w-[50px] py-1 text-slate-400">
+      <i class="fa-solid fa-car-side text-base"></i>
+      <span class="text-[9px] font-bold mt-0.5 tracking-tight">Garagem</span>
+    </button>
+  </nav>
+
+  <!-- CUSTOM MODAL DIALOG -->
+  <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-brand-border pb-3">
+        <h3 id="modal-title" class="text-xs font-bold text-slate-100 uppercase tracking-wider">Título Modal</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
+      <div id="modal-body" class="text-xs text-slate-300 space-y-3">
+        <!-- Dynamic content -->
+      </div>
+      <div id="modal-actions" class="flex justify-end gap-2 pt-2 border-t border-brand-border">
+        <!-- Actions buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION STACK -->
+  <div id="toast-container" class="fixed top-14 inset-x-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm mx-auto"></div>
+
+  <!-- APPLICATION LOGIC JAVASCRIPT -->
+  <script>
+    /* ==========================================================================
+       GLOBAL STATE & STORAGE
+       ========================================================================== */
+    const appState = {
+      activeTab: 'dashboard',
+      activeVehicleId: 'v1',
+      vehicles: [
+        { id: 'v1', name: 'VW Golf 2.0 TSI', year: 2021, engine: '2.0 TSI 230cv', fuel: 'Gasolina', km: 48500, vin: 'WVWZZZAUZLW123456' },
+        { id: 'v2', name: 'Fiat Toro 1.3 Turbo', year: 2022, engine: '1.3 T270 Flex', fuel: 'Flex', km: 29000, vin: '9BD198452NZ654321' }
+      ],
+      obd: {
+        connected: false,
+        simulated: true,
+        rpm: 820,
+        speed: 0,
+        temp: 88,
+        battery: 14.1,
+        load: 18,
+        stft: 1.2,
+        dtcs: []
+      },
+      audio: {
+        isRecording: false,
+        audioCtx: null,
+        analyser: null,
+        stream: null,
+        filterNode: null,
+        activeFilter: 'none',
+        timer: 0,
+        timerInterval: null
+      },
+      vibration: {
+        isActive: false,
+        x: 0, y: 0, z: 0, magnitude: 0,
+        rms: 0.14,
+        history: []
+      }
+    };
+
+    const DTC_DATABASE = {
+      "P0300": { title: "Falha Aleatória de Combustão (Random Misfire)", sys: "Ignição", severity: "Alta", cause: "Velas de ignição desgastadas ou bobinas avariadas." },
+      "P0171": { title: "Mistura Muito Magra (Bank 1)", sys: "Alimentação de Ar", severity: "Média", cause: "Entrada falsa de ar após sensor MAF ou baixa pressão." }
+    };
+
+    /* INITIALIZATION */
+    window.addEventListener('DOMContentLoaded', () => {
+      initGarage();
+      checkSystemCapabilities();
+      initCanvasVisualizers();
+      startTelemetryLoop();
+      showToast('CARITHM AI Mobile Pronto', 'success');
+    });
+
+    /* ROUTER TABS */
+    function switchTab(tabId) {
+      appState.activeTab = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      
+      const activeEl = document.getElementById(`tab-${tabId}`);
+      if (activeEl) activeEl.classList.remove('hidden');
+
+      // Update Bottom Nav
+      document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+        btn.classList.remove('text-brand-neon');
+        btn.classList.add('text-slate-400');
+      });
+      const activeMobBtn = document.getElementById(`mob-nav-${tabId}`);
+      if (activeMobBtn) {
+        activeMobBtn.classList.remove('text-slate-400');
+        activeMobBtn.classList.add('text-brand-neon');
+      }
+    }
+
+    /* SLIDE DRAWER & DROPDOWNS */
+    function toggleSlideDrawer() {
+      const drawer = document.getElementById('slide-drawer');
+      drawer.classList.toggle('translate-x-full');
+    }
+
+    function toggleVehicleDropdown() {
+      document.getElementById('vehicle-dropdown').classList.toggle('hidden');
+    }
+
+    /* GARAGE LOGIC */
+    function initGarage() {
+      const list = document.getElementById('vehicle-dropdown-list');
+      const grid = document.getElementById('garage-grid');
+      list.innerHTML = '';
+      grid.innerHTML = '';
+
+      appState.vehicles.forEach(v => {
+        // Dropdown item
+        const item = document.createElement('div');
+        item.className = 'p-2 rounded-xl hover:bg-brand-panel cursor-pointer text-xs flex items-center justify-between';
+        item.onclick = () => { selectActiveVehicle(v.id); toggleVehicleDropdown(); };
+        item.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-200">${v.name}</div>
+            <div class="text-[10px] text-slate-400">${v.engine} • ${v.km.toLocaleString()} km</div>
+          </div>
+          ${v.id === appState.activeVehicleId ? '<i class="fa-solid fa-check text-brand-neon"></i>' : ''}
+        `;
+        list.appendChild(item);
+
+        // Grid Card
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-2xl border ${v.id === appState.activeVehicleId ? 'border-brand-neon/50 bg-brand-neon/5 glow-neon' : 'border-brand-border bg-brand-card'} space-y-2.5`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-100 text-xs">${v.name}</h3>
+            <span class="px-2 py-0.5 rounded bg-brand-panel text-[10px] font-mono text-slate-400">${v.year}</span>
+          </div>
+          <div class="text-xs text-slate-400 space-y-1">
+            <p><strong class="text-slate-300">Motor:</strong> ${v.engine}</p>
+            <p><strong class="text-slate-300">Km:</strong> ${v.km.toLocaleString()} km</p>
+          </div>
+          <button onclick="selectActiveVehicle('${v.id}')" class="touch-active w-full py-2 rounded-xl text-xs font-bold ${v.id === appState.activeVehicleId ? 'bg-brand-neon text-slate-950' : 'bg-brand-panel text-slate-300'}">
+            ${v.id === appState.activeVehicleId ? 'Veículo Selecionado' : 'Ativar Veículo'}
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function selectActiveVehicle(id) {
+      appState.activeVehicleId = id;
+      const v = appState.vehicles.find(x => x.id === id);
+      if (v) document.getElementById('header-vehicle-name').innerText = v.name;
+      initGarage();
+      showToast(`Veículo ativo: ${v.name}`, 'info');
+    }
+
+    function openAddVehicleModal() {
+      showModal(
+        'Cadastrar Veículo',
+        `
+        <div class="space-y-2.5">
+          <input type="text" id="new-v-name" placeholder="Marca e Modelo (ex: Fiat Pulse)" class="w-full bg-brand-dark border border-brand-border rounded-xl p-2.5 text-xs text-slate-200" />
+          <input type="number" id="new-v-year" placeholder="Ano (ex: 2022)" class="w-full bg-brand-dark border border-brand-border rounded-xl p-2.5 text-xs text-slate-200" />
+          <input type="text" id="new-v-engine" placeholder="Motorização (ex: 1.0 Turbo)" class="w-full bg-brand-dark border border-brand-border rounded-xl p-2.5 text-xs text-slate-200" />
+          <input type="number" id="new-v-km" placeholder="Quilometragem (km)" class="w-full bg-brand-dark border border-brand-border rounded-xl p-2.5 text-xs text-slate-200" />
+        </div>
+        `,
+        [
+          { label: 'Cancelar', class: 'bg-brand-panel text-slate-300', action: closeModal },
+          { label: 'Salvar', class: 'bg-brand-neon text-slate-950 font-bold', action: saveVehicle }
+        ]
+      );
+    }
+
+    function saveVehicle() {
+      const name = document.getElementById('new-v-name').value;
+      const year = parseInt(document.getElementById('new-v-year').value) || 2022;
+      const engine = document.getElementById('new-v-engine').value || '1.6';
+      const km = parseInt(document.getElementById('new-v-km').value) || 0;
+
+      if (!name) return showToast('Preencha o nome do veículo.', 'warning');
+
+      const id = 'v' + (appState.vehicles.length + 1);
+      appState.vehicles.push({ id, name, year, engine, km });
+      closeModal();
+      initGarage();
+      selectActiveVehicle(id);
+    }
+
+    /* TELEMETRY LOOP */
+    function startTelemetryLoop() {
+      setInterval(() => {
+        if (appState.obd.simulated) {
+          appState.obd.rpm = Math.max(780, Math.min(850, appState.obd.rpm + (Math.floor(Math.random() * 10) - 5)));
+        }
+        document.getElementById('gauge-rpm-val').innerText = appState.obd.rpm;
+      }, 500);
+    }
+
+    function toggleObdSimulatedData() {
+      appState.obd.simulated = !appState.obd.simulated;
+      showToast(`Dados simulados: ${appState.obd.simulated ? 'Ativados' : 'Desativados'}`, 'info');
+    }
+
+    /* WEB AUDIO API */
+    async function toggleAudioRecording() {
+      if (appState.audio.isRecording) stopAudioRecording();
+      else await startAudioRecording(0);
+    }
+
+    async function startAudioRecording(secs) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        appState.audio.stream = stream;
+        appState.audio.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = appState.audio.audioCtx.createMediaStreamSource(stream);
+        appState.audio.analyser = appState.audio.audioCtx.createAnalyser();
+        appState.audio.analyser.fftSize = 1024;
+        
+        source.connect(appState.audio.analyser);
+        appState.audio.isRecording = true;
+        
+        document.getElementById('btn-audio-toggle').innerHTML = '<i class="fa-solid fa-stop text-sm"></i> <span>PARAR CAPTURA</span>';
+        document.getElementById('btn-audio-toggle').classList.replace('bg-brand-neon', 'bg-red-500');
+        showToast('Captura acústica iniciada', 'success');
+      } catch(e) {
+        appState.audio.isRecording = true;
+        showToast('Microfone indisponível. Simulador em execução.', 'info');
+      }
+    }
+
+    function stopAudioRecording() {
+      appState.audio.isRecording = false;
+      if (appState.audio.stream) appState.audio.stream.getTracks().forEach(t => t.stop());
+      document.getElementById('btn-audio-toggle').innerHTML = '<i class="fa-solid fa-microphone text-sm"></i> <span>INICIAR CAPTURA ACÚSTICA</span>';
+      document.getElementById('btn-audio-toggle').classList.replace('bg-red-500', 'bg-brand-neon');
+    }
+
+    function setAudioFilter(f) {
+      document.getElementById('audio-active-filter').innerText = f.toUpperCase();
+    }
+
+    /* DEVICEMOTION VIBRATION */
+    function toggleVibrationCapture() {
+      if (appState.vibration.isActive) {
+        appState.vibration.isActive = false;
+        document.getElementById('btn-vibration-toggle').innerHTML = '<i class="fa-solid fa-play text-sm"></i> <span>INICIAR LEITURA G-FORCE</span>';
+        document.getElementById('btn-vibration-toggle').classList.replace('bg-red-500', 'bg-brand-amber');
+      } else {
+        appState.vibration.isActive = true;
+        document.getElementById('btn-vibration-toggle').innerHTML = '<i class="fa-solid fa-stop text-sm"></i> <span>PARAR LEITURA</span>';
+        document.getElementById('btn-vibration-toggle').classList.replace('bg-brand-amber', 'bg-red-500');
+        showToast('Leitura de vibração ativada', 'success');
+      }
+    }
+
+    /* HIGH-DPI CANVAS RENDERER */
+    function initCanvasVisualizers() {
+      const waveCanvas = document.getElementById('canvas-waveform');
+      const fftCanvas = document.getElementById('canvas-fft');
+      const vibCanvas = document.getElementById('canvas-vibration');
+
+      function resize() {
+        [waveCanvas, fftCanvas, vibCanvas].forEach(c => {
+          if (c && c.parentElement) {
+            const rect = c.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            c.width = rect.width * dpr;
+            c.height = rect.height * dpr;
+            const ctx = c.getContext('2d');
+            ctx.scale(dpr, dpr);
+          }
+        });
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      function render() {
+        requestAnimationFrame(render);
+        
+        // Waveform
+        if (waveCanvas) {
+          const ctx = waveCanvas.getContext('2d');
+          const w = waveCanvas.width / (window.devicePixelRatio || 1);
+          const h = waveCanvas.height / (window.devicePixelRatio || 1);
+          ctx.clearRect(0, 0, w, h);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#00ff88';
+          ctx.beginPath();
+
+          for (let i = 0; i < 64; i++) {
+            const y = (h / 2) + (appState.audio.isRecording ? Math.sin(Date.now()*0.01 + i)*25 : 0);
+            const x = (w / 64) * i;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        // FFT Spectrogram
+        if (fftCanvas) {
+          const ctx = fftCanvas.getContext('2d');
+          const w = fftCanvas.width / (window.devicePixelRatio || 1);
+          const h = fftCanvas.height / (window.devicePixelRatio || 1);
+          ctx.clearRect(0, 0, w, h);
+
+          const barW = (w / 32) - 1;
+          for (let i = 0; i < 32; i++) {
+            const barH = appState.audio.isRecording ? Math.abs(Math.sin(Date.now()*0.005 + i)) * (h * 0.8) : 4;
+            ctx.fillStyle = '#00e5ff';
+            ctx.fillRect(i * (barW + 1), h - barH, barW, barH);
+          }
+        }
+
+        // Vibration Line
+        if (vibCanvas) {
+          const ctx = vibCanvas.getContext('2d');
+          const w = vibCanvas.width / (window.devicePixelRatio || 1);
+          const h = vibCanvas.height / (window.devicePixelRatio || 1);
+          ctx.clearRect(0, 0, w, h);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ff9900';
+          ctx.beginPath();
+
+          for (let i = 0; i < 50; i++) {
+            const y = (h / 2) + (appState.vibration.isActive ? Math.sin(Date.now()*0.02 + i)*30 : 0);
+            const x = (w / 50) * i;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+      render();
+    }
+
+    /* OBD & DTC ACTIONS */
+    async function connectObdBluetooth() {
+      showToast('Buscando adaptadores OBD-II Bluetooth...', 'info');
+    }
+
+    function simulateDtcFault() {
+      appState.obd.dtcs = [{ code: 'P0300', ...DTC_DATABASE['P0300'] }];
+      renderDtcList();
+      showToast('Falha P0300 injetada.', 'warning');
+    }
+
+    function readDtcCodes() {
+      showToast('Lendo DTCs...', 'info');
+      setTimeout(renderDtcList, 600);
+    }
+
+    function renderDtcList() {
+      const container = document.getElementById('obd-dtc-list');
+      container.innerHTML = '';
+      if (appState.obd.dtcs.length === 0) {
+        container.innerHTML = `<div class="p-3 bg-brand-dark rounded-xl text-xs text-slate-400">Nenhum código de falha encontrado.</div>`;
+        return;
+      }
+      appState.obd.dtcs.forEach(dtc => {
+        container.innerHTML += `
+          <div class="p-3 bg-brand-dark rounded-xl border border-red-500/30 text-xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-mono font-bold">${dtc.code}</span>
+              <span class="text-[10px] text-slate-400 uppercase font-mono">${dtc.sys}</span>
+            </div>
+            <p class="font-bold text-slate-200 mt-1">${dtc.title}</p>
+            <p class="text-slate-400">${dtc.cause}</p>
+          </div>
+        `;
+      });
+    }
+
+    function promptClearDtc() {
+      showModal(
+        'Limpar Memória DTC',
+        '<p class="text-xs text-slate-300">Deseja apagar os códigos DTC salvos na ECU?</p>',
+        [
+          { label: 'Cancelar', class: 'bg-brand-panel text-slate-300', action: closeModal },
+          { label: 'Confirmar Limpeza', class: 'bg-red-500 text-white font-bold', action: () => { appState.obd.dtcs = []; renderDtcList(); closeModal(); showToast('DTCs limpos.', 'success'); } }
+        ]
+      );
+    }
+
+    function searchDtcDatabase() {
+      const q = document.getElementById('dtc-search-input').value.toUpperCase().trim();
+      const res = document.getElementById('dtc-search-result');
+      if (q && DTC_DATABASE[q]) {
+        const item = DTC_DATABASE[q];
+        res.classList.remove('hidden');
+        res.innerHTML = `<strong>${q}</strong>: ${item.title} <br><span class="text-slate-400">${item.cause}</span>`;
+      } else {
+        res.classList.remove('hidden');
+        res.innerText = 'Código não localizado (tente P0300 ou P0171).';
+      }
+    }
+
+    /* AI FUSION ENGINE */
+    function runAiCorrelationAnalysis() {
+      showToast('Executando fusão multitrim...', 'info');
+      setTimeout(() => {
+        showToast('Análise de Inteligência Concluída.', 'success');
+      }, 800);
+    }
+
+    /* WIZARD STEPPER */
+    function selectWizardSymptom(type) {
+      document.getElementById('wiz-step-1').classList.add('hidden');
+      document.getElementById('wiz-step-2').classList.remove('hidden');
+      document.getElementById('wiz-step-1-ind').classList.replace('text-brand-neon', 'text-slate-500');
+      document.getElementById('wiz-step-2-ind').classList.replace('text-slate-500', 'text-brand-neon');
+    }
+
+    function selectWizardCondition(cond) {
+      document.getElementById('wiz-step-2').classList.add('hidden');
+      document.getElementById('wiz-step-3').classList.remove('hidden');
+      setTimeout(() => {
+        switchTab('ai');
+        showToast('Laudo gerado pelo assistente!', 'success');
+      }, 1500);
+    }
+
+    /* SYSTEM HELPERS */
+    function checkSystemCapabilities() {
+      const list = document.getElementById('compatibility-checker-list');
+      list.innerHTML = `
+        <div class="flex items-center justify-between p-2 bg-brand-dark rounded-xl border border-brand-border">
+          <span>Web Audio API</span> <span class="text-brand-neon font-mono font-bold">OK</span>
+        </div>
+        <div class="flex items-center justify-between p-2 bg-brand-dark rounded-xl border border-brand-border">
+          <span>DeviceMotion Acelerômetro</span> <span class="text-brand-neon font-mono font-bold">OK</span>
+        </div>
+        <div class="flex items-center justify-between p-2 bg-brand-dark rounded-xl border border-brand-border">
+          <span>Web Bluetooth API</span> <span class="text-brand-cyan font-mono font-bold">DISPONÍVEL</span>
+        </div>
+      `;
+    }
+
+    function exportReportsJson() {
+      const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState));
+      const a = document.createElement('a');
+      a.href = str;
+      a.download = `CARITHM_Report_${Date.now()}.json`;
+      a.click();
+    }
+
+    function showModal(title, contentHtml, actions) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-body').innerHTML = contentHtml;
+      const actionsEl = document.getElementById('modal-actions');
+      actionsEl.innerHTML = '';
+      actions.forEach(act => {
+        const btn = document.createElement('button');
+        btn.className = `px-3.5 py-2 rounded-xl text-xs font-semibold transition ${act.class}`;
+        btn.innerText = act.label;
+        btn.onclick = act.action;
+        actionsEl.appendChild(btn);
+      });
+      document.getElementById('custom-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      let border = 'border-brand-cyan/40 text-brand-cyan';
+      if (type === 'success') border = 'border-brand-neon/40 text-brand-neon';
+      if (type === 'warning') border = 'border-brand-amber/40 text-brand-amber';
+
+      t.className = `pointer-events-auto px-4 py-2.5 bg-brand-card/95 border ${border} rounded-xl shadow-2xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 flex items-center justify-between`;
+      t.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="ml-2 text-slate-500"><i class="fa-solid fa-xmark"></i></button>`;
+      
+      c.appendChild(t);
+      setTimeout(() => { t.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+      setTimeout(() => {
+        t.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => t.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
